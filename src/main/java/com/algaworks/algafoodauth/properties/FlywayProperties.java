@@ -1,4 +1,4 @@
-package com.algaworks.algafoodauth;
+package com.algaworks.algafoodauth.properties;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -11,12 +11,15 @@ import org.springframework.validation.annotation.Validated;
 @Getter
 @Setter
 @Validated //o spring auto valida a classe
-@ConfigurationProperties("algafood.auth")
-public class AlgafoodSecurityProperties {
+@ConfigurationProperties("auth.datasource")
+public class FlywayProperties {
 
     @NotBlank
-    private String providerUrl;
-    // endereco do server de autorizacao, se for integrado com a
-    // aplicacao, eu coloco endereco da api
+    String jdbcUrl;
 
+    @NotBlank
+    String username;
+
+    @NotBlank
+    String password;
 }

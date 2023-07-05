@@ -1,5 +1,7 @@
-package com.algaworks.algafoodauth;
+package com.algaworks.algafoodauth.common.config.server;
 
+import com.algaworks.algafoodauth.JwtKeyStoreProperties;
+import com.algaworks.algafoodauth.properties.AlgafoodSecurityProperties;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -7,7 +9,6 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcOperations;
@@ -17,7 +18,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
@@ -31,12 +31,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.core.io.Resource;
 
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.security.KeyPair;
 import java.security.KeyStore;
 import java.time.Duration;
-import java.util.UUID;
 
 
 // Resource Owner Password Credentials Grant ou Password Credentials grant ou Password Flow ou Password Grant Type
