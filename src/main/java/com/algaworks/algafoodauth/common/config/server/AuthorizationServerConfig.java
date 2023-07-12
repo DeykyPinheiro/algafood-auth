@@ -1,6 +1,6 @@
 package com.algaworks.algafoodauth.common.config.server;
 
-import com.algaworks.algafoodauth.JwtKeyStoreProperties;
+import com.algaworks.algafoodauth.properties.JwtKeyStoreProperties;
 import com.algaworks.algafoodauth.properties.AlgafoodSecurityProperties;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -12,12 +12,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
@@ -25,8 +30,10 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.core.io.Resource;
 
@@ -34,6 +41,7 @@ import org.springframework.core.io.Resource;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.time.Duration;
+import java.util.UUID;
 
 
 // Resource Owner Password Credentials Grant ou Password Credentials grant ou Password Flow ou Password Grant Type
@@ -52,7 +60,7 @@ public class AuthorizationServerConfig {
 //    bean que guarda os clientes do server de autorizacao, implementa em memoria
     @Bean
     public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-//esse é meu backend solicitando alguem token, a api, o meu resource server
+        //esse é meu backend solicitando alguem token, a api, o meu resource server
         RegisteredClient registeredClient = RegisteredClient
                 .withId("1")
                 .clientId("algafood-backend") // identificacao do cliente(quem vai chamar esse servico)
@@ -70,7 +78,7 @@ public class AuthorizationServerConfig {
         //esse é algum cliente conhecido solicitando algum token
         RegisteredClient client = RegisteredClient
                 .withId("2")
-                .clientId("client")
+                .clientId("client") // mudar para apenas client depois
                 .clientSecret(passwordEncoder.encode("123"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
@@ -81,18 +89,77 @@ public class AuthorizationServerConfig {
                         .build())
                 .build();
 
+//        authorization code com refresh token, pkce funciona por padrao, passando os campos ele vai usar
+        RegisteredClient autorizationcode = RegisteredClient
+                .withId("3")
+                .clientId("autorizationcode")
+                .clientSecret(passwordEncoder.encode("123"))
+                .scope("READ")
+                .redirectUri("https://oidcdebugger.com/debug")
+                .redirectUri("https://oauthdebugger.com/debug")
+                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+                        .refreshTokenTimeToLive(Duration.ofMinutes(30))
+                        .reuseRefreshTokens(false)
+                        .build())
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(true)  //obriga a tela de consentimento aparecer
+                        .requireProofKey(false)
+                        .build())
+                .build();
+
+
+        RegisteredClient foodanalitics = RegisteredClient
+                .withId("4")
+                .clientId("foodanalitics")
+                .clientSecret(passwordEncoder.encode("123"))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .scope("READ")
+                .scope("WRITE")
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+                        .build())
+                .redirectUri("http://127.0.0.1:8080/authorized")
+                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false) // tela de consentimento aparecer nao aparece
+                        .requireProofKey(false)
+                        .build())
+                .build();
+
+
 //        se eu precisar de mais um, só registrar um cliente e passar como pametro na funcao "InMemoryRegisteredClientRepository"
-        return new InMemoryRegisteredClientRepository(registeredClient, client);
+        return new InMemoryRegisteredClientRepository(registeredClient, client, autorizationcode, foodanalitics);
     }
 
+
     //    filtro do authorizationServer
+    //    @Order(Ordered.HIGHEST_PRECEDENCE
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
+    @Order(1)
+//    @Order(1) posso usar isso tbm para dar as ordens de precedencia dos filtros
     //server pra ser o primeiro filtro a passar, depois segue o fluxo, isso pro login funcionar de maneira adequada
     public SecurityFilterChain authFilterChain(HttpSecurity http) throws Exception {
         //aqui ele aplica as configuracoes padrao de seguraca, por algum motivo ta dando
 //        erro, mas como nao tenho tempo, vou neglicenciar essa parte, vou deixar comentado
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http); // isso aqui só funciona
+
+        return http.formLogin(Customizer.withDefaults()).build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain appSecurityFilterChain(HttpSecurity http) throws Exception {
+        http.authorizeHttpRequests(
+                        authorize -> authorize.anyRequest().authenticated())
+                .formLogin(Customizer.withDefaults());
         return http.build();
     }
 
@@ -111,9 +178,11 @@ public class AuthorizationServerConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+//        return NoOpPasswordEncoder.getInstance(); // evita que a senha seja codificaada em bcript
     }
 
 
+    // bean responsavel por salvar os tokens em banco
     @Bean
     public OAuth2AuthorizationService oAuth2AuthorizationService(JdbcOperations jdbcOperations,
                                                                  RegisteredClientRepository registeredClientRepository) {
@@ -121,7 +190,7 @@ public class AuthorizationServerConfig {
         return new JdbcOAuth2AuthorizationService(jdbcOperations, registeredClientRepository);
     }
 
-//    esse Bean serve para abrir o keystore e usar a chave privada pra assinar
+    //    esse Bean serve para abrir o keystore e usar a chave privada pra assinar
     @Bean
     public JWKSource<SecurityContext> jwkSource(JwtKeyStoreProperties properties) throws Exception {
         char[] keyStorePass = properties.getPassword().toCharArray();
@@ -135,6 +204,5 @@ public class AuthorizationServerConfig {
         RSAKey rsaKey = RSAKey.load(keyStore, keyParAlias, keyStorePass);
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));
     }
-
 
 }

@@ -10,7 +10,7 @@ CREATE TABLE oauth2_authorization (
     authorization_code_issued_at timestamp DEFAULT NULL,
     authorization_code_expires_at timestamp DEFAULT NULL,
     authorization_code_metadata blob DEFAULT NULL,
-    access_token_value varchar(1000) NOT NULL,
+    access_token_value blob DEFAULT NULL,
     access_token_issued_at timestamp DEFAULT NULL,
     access_token_expires_at timestamp DEFAULT NULL,
     access_token_metadata blob DEFAULT NULL,
@@ -25,15 +25,12 @@ CREATE TABLE oauth2_authorization (
     refresh_token_expires_at timestamp DEFAULT NULL,
     refresh_token_metadata blob DEFAULT NULL,
     user_code_value blob DEFAULT NULL,
-    user_code_issued_at  timestamp DEFAULT NULL,
+    user_code_issued_at timestamp DEFAULT NULL,
     user_code_expires_at timestamp DEFAULT NULL,
     user_code_metadata blob DEFAULT NULL,
     device_code_value blob DEFAULT NULL,
-    device_code_issued_at  timestamp DEFAULT NULL,
+    device_code_issued_at timestamp DEFAULT NULL,
     device_code_expires_at timestamp DEFAULT NULL,
     device_code_metadata blob DEFAULT NULL,
-
-
     PRIMARY KEY (id)
 );
-
