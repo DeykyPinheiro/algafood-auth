@@ -27,6 +27,7 @@ public class AppDbconfig {
 
     //    aqui é onde eu mostro qual DataSoucer usar
     @Bean
+//    @Primary
     public LocalContainerEntityManagerFactoryBean appEntityManager(
             EntityManagerFactoryBuilder builder, @Qualifier("appDataSource") DataSource dataSource) {
         return builder.dataSource(dataSource).

@@ -5,13 +5,17 @@ import com.algaworks.algafoodauth.model.app.Usuario;
 import com.algaworks.algafoodauth.repository.app.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigurationPackage;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 //essa classe é responsavel por buscar os usuarios em banco de dados, sem ela ele busca na memoria
 @Service
@@ -26,7 +30,15 @@ public class JpaUserDetailsService implements UserDetailsService {
                 new UsernameNotFoundException("Usuario não encontrado com esse e-mail!"));
 //estou passando uma lista vazia por hora
         System.out.println("CHAMEI FINALMENTE loadUserByUsername");
-        return new User(user.getNome(), user.getSenha(), Collections.emptyList());
+        return new User(user.getEmail(), user.getSenha(),getAuthorities(user).stream().toList());
+//        return new User(user.getEmail(), user.getSenha(), Collections.emptyList());
+    }
+
+    private Collection<GrantedAuthority> getAuthorities(Usuario usuario) {
+        return usuario.getListaGrupos().stream()
+                .flatMap(grupo -> grupo.getListaPermissao().stream())
+                .map(permissao -> new SimpleGrantedAuthority(permissao.getNome().toUpperCase()))
+                .collect(Collectors.toSet());
     }
 }
 //http://localhost:9000/oauth2/authorize?client_id=client&redirect_uri=https%3A%2F%2Foauthdebugger.com%2Fdebug&scope=READ&response_type=code&response_mode=form_post&state=cce93xkg8tu&nonce=t0he77hnqgp

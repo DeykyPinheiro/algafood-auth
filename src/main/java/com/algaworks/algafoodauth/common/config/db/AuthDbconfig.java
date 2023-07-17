@@ -30,7 +30,7 @@ public class AuthDbconfig {
 
 
     @Bean
-    @Primary
+    @Primary //prioridade é o app de autenticacao
     public LocalContainerEntityManagerFactoryBean authEntityManager(
             EntityManagerFactoryBuilder builder, @Qualifier("authDataSource") DataSource dataSource) {
         return builder.dataSource(dataSource).

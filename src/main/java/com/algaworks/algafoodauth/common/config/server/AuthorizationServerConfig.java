@@ -1,7 +1,9 @@
 package com.algaworks.algafoodauth.common.config.server;
 
+import com.algaworks.algafoodauth.model.app.Usuario;
 import com.algaworks.algafoodauth.properties.JwtKeyStoreProperties;
 import com.algaworks.algafoodauth.properties.AlgafoodSecurityProperties;
+import com.algaworks.algafoodauth.repository.app.UsuarioRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
@@ -15,6 +17,8 @@ import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,6 +37,8 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.core.io.Resource;
@@ -41,6 +47,8 @@ import org.springframework.core.io.Resource;
 import java.io.InputStream;
 import java.security.KeyStore;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 
@@ -204,5 +212,38 @@ public class AuthorizationServerConfig {
         RSAKey rsaKey = RSAKey.load(keyStore, keyParAlias, keyStorePass);
         return new ImmutableJWKSet<>(new JWKSet(rsaKey));
     }
+
+    //    customizar o token jwt antes de ser emitido
+//    tem um template variable, mas nao sei como funciona, só preciso implementar a interface quem no  OAuth2TokenCustomizer
+    @Bean
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(UsuarioRepository usuarioRepository) {
+
+//no context tem tudo o que esta dentro do token a ser emitido
+        return context -> {
+
+
+//            Authentication authentication = context.getPrincipal(); //é um var template, mas no padrao do spring é authentication
+//            if (authentication.getPrincipal() instanceof User) {
+            Authentication authentication = context.getPrincipal();
+            if (authentication.getPrincipal() instanceof User) {
+                User user = (User) authentication.getPrincipal();
+
+
+                Usuario usuario = usuarioRepository.findByEmail(user.getUsername()).orElseThrow(() -> new RuntimeException("usuario nao encontrado"));
+
+                Set<String> authorities = new HashSet<>(); // monstando a lista de permissoes para por no token JWT
+                for (GrantedAuthority authority : user.getAuthorities()) {
+                    authorities.add(authority.getAuthority());
+                }
+
+
+//                inserir dados no JWT
+                context.getClaims().claim("usuario_id", usuario.getId().toString());
+                context.getClaims().claim("authorities", authorities);
+            }
+
+        };
+    }
+
 
 }
