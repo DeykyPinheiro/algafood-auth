@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
 import javax.sql.DataSource;
@@ -33,5 +35,11 @@ public class AppDbconfig {
         return builder.dataSource(dataSource).
                 packages("com.algaworks.algafoodauth.model.app")
                 .build();
+    }
+
+    //nao precisa instanciar, mas como eu queria usar um bean especifico precisei
+    @Bean
+    public JdbcOperations appJdbcOperations(@Qualifier("appDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -24,6 +25,7 @@ public class JpaUserDetailsService implements UserDetailsService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Transactional(readOnly = true) // tive que adicionar pq a transacao fecha quando consulta e-mail
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Usuario user = usuarioRepository.findByEmail(username).orElseThrow(() ->

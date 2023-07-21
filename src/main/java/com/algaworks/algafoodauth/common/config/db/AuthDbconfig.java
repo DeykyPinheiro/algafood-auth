@@ -10,6 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
 import javax.sql.DataSource;
@@ -36,5 +38,12 @@ public class AuthDbconfig {
         return builder.dataSource(dataSource).
                 packages("com.algaworks.algafoodauth.model.auth")
                 .build();
+    }
+
+
+    @Primary
+    @Bean
+    public JdbcOperations authJdbcOperations(@Qualifier("authDataSource") DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

@@ -1,5 +1,6 @@
 package com.algaworks.algafoodauth.common.config.server;
 
+import com.algaworks.algafoodauth.common.config.db.AppDbconfig;
 import com.algaworks.algafoodauth.model.app.Usuario;
 import com.algaworks.algafoodauth.properties.JwtKeyStoreProperties;
 import com.algaworks.algafoodauth.properties.AlgafoodSecurityProperties;
@@ -9,6 +10,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -30,6 +33,7 @@ import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
@@ -64,87 +68,99 @@ import java.util.UUID;
 //VOU TER QUE REESCREVER, POR ISSO TA COMENTADA
 public class AuthorizationServerConfig {
 
+
     //    isso está sendo obrigatorio, mas no curso mudamos, entao vou deixar ai temporariamente
 //    bean que guarda os clientes do server de autorizacao, implementa em memoria
+//    to injetando via bean, um bean especifico de jdbc
     @Bean
-    public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
+    public RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder,
+                                                                 @Qualifier("appJdbcOperations") JdbcOperations jdbcOperations) {
+//VOU SALVAR TUDO NO BANCO DO RESOURCE SERVER
         //esse é meu backend solicitando alguem token, a api, o meu resource server
-        RegisteredClient registeredClient = RegisteredClient
-                .withId("1")
-                .clientId("algafood-backend") // identificacao do cliente(quem vai chamar esse servico)
-                .clientSecret(passwordEncoder.encode("123"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC) //basica autentication nome:senha em base64
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS) // equivale ao password flow, é fluxo mais simples de autenticacao
-                .scope("READ") // escopo de leitura apenas
-//                configuracoes dos tokens
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED) // tem dois tipos, o reference é um token opaco e o JWT é o seltf_contained
-                        .accessTokenTimeToLive(Duration.ofMinutes(30)) // duracao de 30 minutos dos tokens
-                        .build())
-                .build();
-
-        //esse é algum cliente conhecido solicitando algum token
-        RegisteredClient client = RegisteredClient
-                .withId("2")
-                .clientId("client") // mudar para apenas client depois
-                .clientSecret(passwordEncoder.encode("123"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("READ")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(30))
-                        .build())
-                .build();
-
-//        authorization code com refresh token, pkce funciona por padrao, passando os campos ele vai usar
-        RegisteredClient autorizationcode = RegisteredClient
-                .withId("3")
-                .clientId("autorizationcode")
-                .clientSecret(passwordEncoder.encode("123"))
-                .scope("READ")
-                .redirectUri("https://oidcdebugger.com/debug")
-                .redirectUri("https://oauthdebugger.com/debug")
-                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(30))
-                        .refreshTokenTimeToLive(Duration.ofMinutes(30))
-                        .reuseRefreshTokens(false)
-                        .build())
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(true)  //obriga a tela de consentimento aparecer
-                        .requireProofKey(false)
-                        .build())
-                .build();
-
-
-        RegisteredClient foodanalitics = RegisteredClient
-                .withId("4")
-                .clientId("foodanalitics")
-                .clientSecret(passwordEncoder.encode("123"))
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .scope("READ")
-                .scope("WRITE")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                        .accessTokenTimeToLive(Duration.ofMinutes(30))
-                        .build())
-                .redirectUri("http://127.0.0.1:8080/authorized")
-                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(false) // tela de consentimento aparecer nao aparece
-                        .requireProofKey(false)
-                        .build())
-                .build();
+//        RegisteredClient registeredClient = RegisteredClient
+//                .withId("1")
+//                .clientId("algafood-backend") // identificacao do cliente(quem vai chamar esse servico)
+//                .clientSecret(passwordEncoder.encode("123"))
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC) //basica autentication nome:senha em base64
+//                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS) // equivale ao password flow, é fluxo mais simples de autenticacao
+//                .scope("READ") // escopo de leitura apenas
+////                configuracoes dos tokens
+//                .tokenSettings(TokenSettings.builder()
+//                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED) // tem dois tipos, o reference é um token opaco e o JWT é o seltf_contained
+//                        .accessTokenTimeToLive(Duration.ofMinutes(30)) // duracao de 30 minutos dos tokens
+//                        .build())
+//                .build();
+//
+//        //esse é algum cliente conhecido solicitando algum token
+//        RegisteredClient client = RegisteredClient
+//                .withId("2")
+//                .clientId("client") // mudar para apenas client depois
+//                .clientSecret(passwordEncoder.encode("123"))
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+//                .scope("READ")
+//                .tokenSettings(TokenSettings.builder()
+//                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+//                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+//                        .build())
+//                .build();
+//
+////        authorization code com refresh token, pkce funciona por padrao, passando os campos ele vai usar
+//        RegisteredClient autorizationcode = RegisteredClient
+//                .withId("3")
+//                .clientId("autorizationcode")
+//                .clientSecret(passwordEncoder.encode("123"))
+//                .scope("READ")
+//                .redirectUri("https://oidcdebugger.com/debug")
+//                .redirectUri("https://oauthdebugger.com/debug")
+//                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+//                .tokenSettings(TokenSettings.builder()
+//                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+//                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+//                        .refreshTokenTimeToLive(Duration.ofMinutes(30))
+//                        .reuseRefreshTokens(false)
+//                        .build())
+//                .clientSettings(ClientSettings.builder()
+//                        .requireAuthorizationConsent(true)  //obriga a tela de consentimento aparecer
+//                        .requireProofKey(false)
+//                        .build())
+//                .build();
+//
+//
+//        RegisteredClient foodanalitics = RegisteredClient
+//                .withId("4")
+//                .clientId("foodanalitics")
+//                .clientSecret(passwordEncoder.encode("123"))
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                .scope("READ")
+//                .scope("WRITE")
+//                .tokenSettings(TokenSettings.builder()
+//                        .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
+//                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+//                        .build())
+//                .redirectUri("http://127.0.0.1:8080/authorized")
+//                .redirectUri("http://127.0.0.1:8080/swagger-ui/oauth2-redirect.html")
+//                .clientSettings(ClientSettings.builder()
+//                        .requireAuthorizationConsent(false) // tela de consentimento aparecer nao aparece
+//                        .requireProofKey(false)
+//                        .build())
+//                .build();
 
 
 //        se eu precisar de mais um, só registrar um cliente e passar como pametro na funcao "InMemoryRegisteredClientRepository"
-        return new InMemoryRegisteredClientRepository(registeredClient, client, autorizationcode, foodanalitics);
+//        return new InMemoryRegisteredClientRepository(registeredClient, client, autorizationcode, foodanalitics);
+
+        JdbcRegisteredClientRepository jdbcRegisteredClientRepository = new JdbcRegisteredClientRepository(jdbcOperations);
+//        salvei e usei o dbeaver para gerar o schema e inserir no after migrater
+//        jdbcRegisteredClientRepository.save(registeredClient);
+//        jdbcRegisteredClientRepository.save(client);
+//        jdbcRegisteredClientRepository.save(autorizationcode);
+//        jdbcRegisteredClientRepository.save(foodanalitics);
+        return jdbcRegisteredClientRepository;
     }
 
 
@@ -225,21 +241,23 @@ public class AuthorizationServerConfig {
 //            Authentication authentication = context.getPrincipal(); //é um var template, mas no padrao do spring é authentication
 //            if (authentication.getPrincipal() instanceof User) {
             Authentication authentication = context.getPrincipal();
+            var a = authentication.getPrincipal(); // quando vem o client_credentiais,o principal nao existe,
+//            ele tomo como principal o nome do user, por isso o vale para o autentication_code
             if (authentication.getPrincipal() instanceof User) {
                 User user = (User) authentication.getPrincipal();
 
 
                 Usuario usuario = usuarioRepository.findByEmail(user.getUsername()).orElseThrow(() -> new RuntimeException("usuario nao encontrado"));
 
-                Set<String> authorities = new HashSet<>(); // monstando a lista de permissoes para por no token JWT
+                Set<String> authorityList = new HashSet<>(); // monstando a lista de permissoes para por no token JWT
                 for (GrantedAuthority authority : user.getAuthorities()) {
-                    authorities.add(authority.getAuthority());
+                    authorityList.add(authority.getAuthority());
                 }
 
 
 //                inserir dados no JWT
                 context.getClaims().claim("usuario_id", usuario.getId().toString());
-                context.getClaims().claim("authorities", authorities);
+                context.getClaims().claim("authorities", authorityList);
             }
 
         };
